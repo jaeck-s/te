@@ -22,7 +22,8 @@ class ValidatorFactory:
             "has_alphanumeric": self._validate_has_alphanumeric,
             "no_invalid_chars": self._validate_no_invalid_chars,
             "string_consistency": self._validate_string_consistency,
-            "global_deduplicate": self._validate_global_deduplicate
+            "global_deduplicate": self._validate_global_deduplicate,
+            "no_underscore": self._validate_no_underscore  # 新增验证器
         }
         self.logger.debug(f"验证工厂初始化完成，加载了 {len(self.validators)} 个验证器")
     
@@ -89,6 +90,21 @@ class ValidatorFactory:
         
         # 添加到已见过的文本集合
         self._seen_texts.add(normalized_text)
+        return True
+    
+    def _validate_no_underscore(self, text: str) -> bool:
+        """
+        验证文本不包含下划线
+        
+        Args:
+            text: 要验证的文本
+            
+        Returns:
+            如果文本不包含下划线则返回True，否则返回False
+        """
+        if '_' in text:
+            self.logger.debug(f"文本 '{text[:30]}...' 包含下划线，被拒绝提取")
+            return False
         return True
     
     def reset_deduplication(self) -> None:

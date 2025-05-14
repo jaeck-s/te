@@ -1,0 +1,50 @@
+{
+  "description": {
+    "group": "basic_props",
+    "desc": "提取属性值 'description'",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "purchase_notification": {
+    "group": "basic_props",
+    "desc": "提取属性值 'purchase_notification'",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "unlock_notification": {
+    "group": "basic_props",
+    "desc": "提取属性值 'unlock_notification'",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "title_text": {
+    "group": "basic_props",
+    "desc": "提取属性值 'title_text'",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "description_text": {
+    "group": "basic_props",
+    "desc": "提取属性值 'description_text'",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "renpy_notify": {
+    "group": "func_props",
+    "desc": "提取函数调用 'renpy.notify'",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "json_display_name": {
+    "group": "json",
+    "desc": "从JSON文件中提取 'display_name' 字段",
+    "format": "json",
+    "default_enabled": true
+  },
+  "json_person_name": {
+    "group": "json",
+    "desc": "从JSON文件中提取 'first_name'和'last_name' 字段",
+    "format": "json",
+    "default_enabled": true
+  }
+}

@@ -6,7 +6,10 @@ from typing import Dict, Callable, List, Tuple, Optional
 from ..extractors_impl.rpy_properties import (
     extract_description,
     extract_purchase_notification,
-    extract_unlock_notification
+    extract_unlock_notification,
+    extract_title_text,
+    extract_description_text,
+    extract_renpy_notify
 )
 from ..extractors_impl.json_fields import extract_display_name, extract_person_name
 from ..logger import get_logger
@@ -19,13 +22,16 @@ class ExtractorFactory:
     
     def __init__(self) -> None:
         self.logger = get_logger()
-        # 初始化提取器，添加新的JSON提取器
+        # 初始化提取器，添加新的提取器
         self.extractors: Dict[str, Callable[[str, str], List[Tuple[int, str]]]] = {
             "description": extract_description,
             "purchase_notification": extract_purchase_notification,
             "unlock_notification": extract_unlock_notification,
-            "json_display_name": extract_display_name,  # 已有JSON提取器
-            "json_person_name": extract_person_name,    # 新增人名提取器
+            "title_text": extract_title_text,
+            "description_text": extract_description_text,
+            "renpy_notify": extract_renpy_notify,
+            "json_display_name": extract_display_name,
+            "json_person_name": extract_person_name,
         }
         self.logger.debug(f"提取工厂初始化完成，加载了 {len(self.extractors)} 个提取器")
     

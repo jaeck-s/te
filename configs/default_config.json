@@ -2,22 +2,31 @@
   "game_dir": "G:/tool/game/CorruptedAcademy-0.426b-pc",
   "translation_dir": "game/tl/schinese",
   "file_patterns": [
+    "*.rpy",
     "*.json"
   ],
   "recursive": true,
   "skip_translated": true,
   "extractors": [
+    "description",
+    "description_text",
+    "purchase_notification",
+    "title_text",
+    "unlock_notification",
+    "renpy_notify",
+    "json_display_name",
     "json_person_name"
   ],
   "validators": [
     "global_deduplicate",
     "has_alphanumeric",
     "no_invalid_chars",
+    "no_underscore",
     "non_empty",
     "string_consistency"
   ],
   "writer_format": "renpy",
-  "write_mode": "append",
+  "write_mode": "overwrite",
   "use_person_name_writer": true,
   "encoding": "utf-8",
   "max_threads": 1

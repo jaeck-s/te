@@ -191,22 +191,13 @@ class HomeTab(BaseTab):
     def append_log(self, message):
         """添加日志到日志文本框"""
         try:
-            # 确保在主线程中执行
-            if QThread.currentThread() != QApplication.instance().thread():
-                # 如果在子线程中，打印警告但继续
-                print("警告: 正尝试从非主线程更新UI，将切换到主线程处理")
-                # 返回，因为我们将在主线程进行UI更新
-                return
-            
-            # 简单直接地添加文本
+            # 我们不再需要线程检查，因为MainWindow已经确保了这点
+            # 只需简单直接地添加文本
             self.log_text.append(message)
             
             # 滚动到底部
             scrollbar = self.log_text.verticalScrollBar()
             scrollbar.setValue(scrollbar.maximum())
-            
-            # 处理 UI 事件，确保更新显示
-            QApplication.processEvents()
         except Exception as e:
             print(f"日志更新错误: {str(e)}")
     
@@ -245,4 +236,4 @@ class HomeTab(BaseTab):
         """显示默认日志信息"""
         self.logger.info("欢迎使用Renpy游戏翻译提取器")
         self.logger.info("请选择游戏目录并配置选项后，点击'开始提取'按钮")
-        self.logger.info("当前支持提取以下属性值：description、purchase_notification、unlock_notification")
+        self.logger.info("当前支持提取以下属性值和函数：description、purchase_notification、unlock_notification、title_text、description_text、renpy.notify")

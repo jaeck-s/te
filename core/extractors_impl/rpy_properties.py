@@ -8,7 +8,10 @@ from ..regex.rpy_patterns import (
     PURCHASE_NOTIFICATION_PATTERN, 
     UNLOCK_NOTIFICATION_PATTERN,
     MULTILINE_COMMENT_PATTERN,
-    SINGLE_LINE_COMMENT_PATTERN
+    SINGLE_LINE_COMMENT_PATTERN,
+    TITLE_TEXT_PATTERN,
+    DESCRIPTION_TEXT_PATTERN,
+    RENPY_NOTIFY_PATTERN
 )
 
 def extract_property_values(content: str, 
@@ -83,3 +86,15 @@ def extract_purchase_notification(content: str, filepath: str) -> List[Tuple[int
 def extract_unlock_notification(content: str, filepath: str) -> List[Tuple[int, str]]:
     """提取unlock_notification属性值"""
     return extract_property_values(content, filepath, UNLOCK_NOTIFICATION_PATTERN, "unlock_notification")
+
+def extract_title_text(content: str, filepath: str) -> List[Tuple[int, str]]:
+    """提取title_text属性值"""
+    return extract_property_values(content, filepath, TITLE_TEXT_PATTERN, "title_text")
+
+def extract_description_text(content: str, filepath: str) -> List[Tuple[int, str]]:
+    """提取description_text属性值"""
+    return extract_property_values(content, filepath, DESCRIPTION_TEXT_PATTERN, "description_text")
+
+def extract_renpy_notify(content: str, filepath: str) -> List[Tuple[int, str]]:
+    """提取renpy.notify函数调用中的文本"""
+    return extract_property_values(content, filepath, RENPY_NOTIFY_PATTERN, "renpy.notify")

@@ -1,0 +1,26 @@
+{
+  "non_empty": {
+    "desc": "非空验证 (过滤空文本)",
+    "default_enabled": true
+  },
+  "has_alphanumeric": {
+    "desc": "字母数字验证 (确保包含字母或数字)",
+    "default_enabled": false
+  },
+  "no_invalid_chars": {
+    "desc": "无效字符验证 (过滤包含无效字符的文本)",
+    "default_enabled": true
+  },
+  "string_consistency": {
+    "desc": "字符串一致性 (确保提取的字符串与游戏显示一致)",
+    "default_enabled": false
+  },
+  "global_deduplicate": {
+    "desc": "全局去重 (避免生成重复的翻译条目)",
+    "default_enabled": false
+  },
+  "no_underscore": {
+    "desc": "无下划线 (禁止提取包含下划线的文本)",
+    "default_enabled": false
+  }
+}

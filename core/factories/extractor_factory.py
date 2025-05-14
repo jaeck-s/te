@@ -8,6 +8,7 @@ from ..extractors_impl.rpy_properties import (
     extract_purchase_notification,
     extract_unlock_notification
 )
+from ..extractors_impl.json_fields import extract_display_name
 from ..logger import get_logger
 
 class ExtractorFactory:
@@ -18,11 +19,12 @@ class ExtractorFactory:
     
     def __init__(self) -> None:
         self.logger = get_logger()
-        # 直接在工厂类中初始化提取器，而不是从外部导入
+        # 初始化提取器，添加新的JSON提取器
         self.extractors: Dict[str, Callable[[str, str], List[Tuple[int, str]]]] = {
             "description": extract_description,
             "purchase_notification": extract_purchase_notification,
             "unlock_notification": extract_unlock_notification,
+            "json_display_name": extract_display_name,  # 新增JSON提取器
         }
         self.logger.debug(f"提取工厂初始化完成，加载了 {len(self.extractors)} 个提取器")
     

@@ -8,6 +8,7 @@ from .factories.extractor_factory import ExtractorFactory
 from .factories.validator_factory import ValidatorFactory
 from .factories.writer_factory import WriterFactory
 from .logger import get_logger
+from .events import publish, EventNames
 
 class TranslationExtractor:
     """翻译文本提取器"""
@@ -31,6 +32,10 @@ class TranslationExtractor:
     
     def update_progress(self, current: int, total: int):
         """更新进度"""
+        # 发布进度更新事件
+        publish(EventNames.EXTRACTION_PROGRESS, current=current, total=total)
+        
+        # 同时调用回调函数（向后兼容）
         if self.progress_callback:
             self.progress_callback(current, total)
     
@@ -40,6 +45,9 @@ class TranslationExtractor:
             self.log("错误: 未指定游戏目录")
             return 0
             
+        # 重置验证器的去重状态
+        self.validator_factory.reset_deduplication()
+        
         # 验证游戏目录
         game_dir = os.path.join(self.config.game_dir, "game")
         if not os.path.isdir(game_dir):
@@ -102,37 +110,64 @@ class TranslationExtractor:
                 # 更新进度
                 self.update_progress(i, total_files)
                 
-                # 读取文件内容，使用配置指定的编码
-                with open(filepath, 'r', encoding=self.config.encoding, errors='replace') as f:
-                    content = f.read()
+                # 添加文件处理开始的日志
+                self.logger.debug(f"正在处理文件: {os.path.basename(filepath)}")
                 
-                # 使用提取工厂提取文本
-                entries = self.extractor_factory.extract_from_content(content, filepath, self.config.extractors)
-                
-                # 验证提取的文本
-                validated_entries = []
-                for line_num, text in entries:
-                    # 使用配置中指定的验证器验证文本是否有效
-                    if self.validator_factory.validate_text(text, self.config.validators):
-                        validated_entries.append((line_num, text))
-                    else:
-                        self.logger.debug(f"文本未通过验证: '{text[:30]}...'")
-                
-                # 去重并添加到结果
-                if validated_entries:
-                    # 过滤已经见过的字符串
-                    unique_entries = []
-                    for line_num, text in validated_entries:
-                        if text not in seen_strings:
-                            seen_strings.add(text)
-                            unique_entries.append((line_num, text))
+                try:
+                    # 使用with语句确保文件正确关闭
+                    with open(filepath, 'r', encoding=self.config.encoding, errors='replace') as f:
+                        content = f.read()
                     
-                    if unique_entries:
-                        file_entries[filepath] = unique_entries
-                        self.log(f"从文件 {os.path.basename(filepath)} 提取了 {len(unique_entries)} 个有效文本条目")
-            
+                    # 发布文件加载事件
+                    publish(EventNames.FILE_LOADED, filepath=filepath, content_length=len(content))
+                    
+                    # 使用提取工厂提取文本
+                    entries = self.extractor_factory.extract_from_content(content, filepath, self.config.extractors)
+                    
+                    # 验证提取的文本
+                    validated_entries = []
+                    for line_num, text in entries:
+                        # 使用配置中指定的验证器验证文本是否有效
+                        if self.validator_factory.validate_text(text, self.config.validators):
+                            validated_entries.append((line_num, text))
+                        else:
+                            self.logger.debug(f"文本未通过验证: '{text[:30]}...'")
+                    
+                    # 去重并添加到结果
+                    if validated_entries:
+                        # 过滤已经见过的字符串
+                        unique_entries = []
+                        for line_num, text in validated_entries:
+                            if text not in seen_strings:
+                                seen_strings.add(text)
+                                unique_entries.append((line_num, text))
+                        
+                        if unique_entries:
+                            file_entries[filepath] = unique_entries
+                            self.log(f"从文件 {os.path.basename(filepath)} 提取了 {len(unique_entries)} 个有效文本条目")
+                
+                except UnicodeDecodeError as e:
+                    self.logger.error(f"文件编码错误 {filepath}: {str(e)}, 尝试跳过该文件")
+                    # 发布提取错误事件但继续处理
+                    publish(EventNames.EXTRACTION_ERROR, error=str(e), message=f"文件编码错误 {filepath}: {str(e)}")
+                    continue
+                
+                except Exception as e:
+                    self.logger.error(f"处理文件出错 {filepath}: {str(e)}")
+                    # 发布提取错误事件但继续处理
+                    publish(EventNames.EXTRACTION_ERROR, error=str(e), message=f"处理文件出错 {filepath}: {str(e)}")
+                    continue
+                    
+                # 每隔100个文件，强制垃圾回收一次，防止内存占用过高
+                if i % 100 == 0:
+                    import gc
+                    gc.collect()
+                    
             except Exception as e:
-                self.logger.error(f"处理文件出错 {filepath}: {str(e)}")
+                self.logger.error(f"文件处理异常 {filepath}: {str(e)}")
+                # 发布提取错误事件但继续处理
+                publish(EventNames.EXTRACTION_ERROR, error=str(e), message=f"文件处理异常 {filepath}: {str(e)}")
+                continue
         
         # 确保最终进度为100%
         self.update_progress(total_files, total_files)
@@ -187,15 +222,18 @@ class TranslationExtractor:
             if not new_entries:
                 continue
                 
-            # 使用写入工厂写入翻译文件，使用配置中的写入格式
+            # 使用写入工厂写入翻译文件，只支持renpy格式
             success = self.writer_factory.write_translation_file(
-                self.config.writer_format, dst_file, new_entries, rel_path, self.config
+                "renpy", dst_file, new_entries, rel_path, self.config
             )
             
             if success:
                 file_count += 1
                 generated_entries += len(new_entries)
                 self.log(f"已生成翻译文件: {rel_path} ({len(new_entries)}个条目)")
+                
+                # 发布文件保存事件
+                publish(EventNames.FILE_SAVED, filepath=dst_file, entry_count=len(new_entries))
         
         self.log(f"总计处理了{file_count}个文件，生成了{generated_entries}个翻译条目")
         return generated_entries

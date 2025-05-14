@@ -1,16 +1,17 @@
 import os
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                            QLabel, QFileDialog, QTextEdit,
-                            QProgressBar, QMessageBox, QComboBox, QCheckBox,
-                            QGroupBox, QFormLayout, QLineEdit, QSpinBox, QListWidget,
-                            QTabWidget, QGridLayout, QPushButton)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+                            QLabel, QMessageBox,
+                            QGroupBox, QFormLayout, QLineEdit, QTabWidget,
+                            QApplication)
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSettings
+from PyQt5.QtGui import QIcon
 from core.extractor import TranslationExtractor
 from core.config import TranslationConfig
-from core.factories.extractor_factory import ExtractorFactory
-from core.factories.validator_factory import ValidatorFactory
 from core.logger import get_logger
-from gui.components.buttons import ActionButton, BrowseButton
+from core.events import subscribe, unsubscribe, publish, EventNames
+from gui.components.buttons import ActionButton
+from gui.tabs.settings_tab import SettingsTab
+from gui.tabs.home_tab import HomeTab
 
 class ExtractorThread(QThread):
     """执行翻译提取的后台线程"""
@@ -21,38 +22,147 @@ class ExtractorThread(QThread):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.extractor = TranslationExtractor(config)
+        # 重要：在线程中创建提取器对象而不是传递已有对象
+        self.extractor = None
         
     def run(self):
         try:
+            # 在线程内部创建对象，避免线程所有权问题
+            self.extractor = TranslationExtractor(self.config)
+            
+            # 使用额外的安全连接方式
+            def safe_emit_progress(current, total):
+                try:
+                    self.progress_update.emit(current, total)
+                except Exception:
+                    pass
+                    
+            def safe_emit_log(message):
+                try:
+                    self.log_update.emit(message)
+                except Exception:
+                    pass
+            
             # 连接信号
-            self.extractor.progress_callback = self.progress_update.emit
-            self.extractor.log_callback = self.log_update.emit
+            self.extractor.progress_callback = safe_emit_progress
+            self.extractor.log_callback = safe_emit_log
+            
+            # 发布开始提取事件
+            publish(EventNames.EXTRACTION_STARTED, config=self.config)
             
             # 执行提取
             result = self.extractor.extract()
+            
             if result:
-                self.finished_signal.emit(True, f"提取完成，成功生成 {result} 个翻译条目。")
+                message = f"提取完成，成功生成 {result} 个翻译条目。"
+                self.finished_signal.emit(True, message)
+                # 发布提取完成事件
+                publish(EventNames.EXTRACTION_COMPLETED, success=True, count=result, message=message)
             else:
-                self.finished_signal.emit(False, "提取过程没有生成任何新的翻译条目。")
+                message = "提取过程没有生成任何新的翻译条目。"
+                self.finished_signal.emit(False, message)
+                # 发布提取完成事件
+                publish(EventNames.EXTRACTION_COMPLETED, success=False, count=0, message=message)
+                
         except Exception as e:
+            error_msg = f"提取失败: {str(e)}"
             self.log_update.emit(f"错误: {str(e)}")
-            self.finished_signal.emit(False, f"提取失败: {str(e)}")
+            self.finished_signal.emit(False, error_msg)
+            
+            # 发布提取错误事件
+            publish(EventNames.EXTRACTION_ERROR, error=str(e), message=error_msg)
+
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, config=None):
         super().__init__()
         self.setWindowTitle("Renpy游戏翻译提取器")
         self.setMinimumSize(800, 600)
-        self.config = TranslationConfig()
+        self.config = config if config else TranslationConfig()
         
         # 设置日志记录器
         self.logger = get_logger()
         self.logger.add_ui_callback(self.log)
         
+        # 初始化历史目录列表
+        self.history_dirs = []
+        self.load_history_dirs()
+        
+        # 订阅事件
+        self._setup_event_handlers()
+        
         self.setup_ui()
         
+        # 应用配置到UI
+        if config:
+            self.apply_config_to_ui()
+    
+    def load_history_dirs(self):
+        """加载历史目录记录"""
+        settings = QSettings("FY-Team", "RenpyTranslationExtractor")
+        self.history_dirs = settings.value("history_dirs", [])
+        if not isinstance(self.history_dirs, list):
+            self.history_dirs = []
+    
+    def save_history_dirs(self):
+        """保存历史目录记录"""
+        settings = QSettings("FY-Team", "RenpyTranslationExtractor")
+        settings.setValue("history_dirs", self.history_dirs)
+    
+    def add_to_history_dirs(self, dir_path):
+        """添加目录到历史记录"""
+        if dir_path in self.history_dirs:
+            # 如果已存在，移到最前面
+            self.history_dirs.remove(dir_path)
+        # 添加到列表前面
+        self.history_dirs.insert(0, dir_path)
+        # 保持列表最多5个
+        self.history_dirs = self.history_dirs[:5]
+        # 保存设置
+        self.save_history_dirs()
+        # 更新主页选项卡的历史菜单
+        self.home_tab.update_history_menu(self.history_dirs)
+    
+    def _setup_event_handlers(self):
+        """设置事件处理器"""
+        # 订阅提取进度更新事件
+        subscribe(EventNames.EXTRACTION_PROGRESS, self.handle_extraction_progress)
+        
+        # 订阅提取完成事件
+        subscribe(EventNames.EXTRACTION_COMPLETED, self.handle_extraction_completed)
+        
+        # 订阅提取错误事件
+        subscribe(EventNames.EXTRACTION_ERROR, self.handle_extraction_error)
+        
+        # 订阅配置变更事件
+        subscribe(EventNames.CONFIG_CHANGED, self.handle_config_changed)
+    
+    def handle_extraction_progress(self, current, total):
+        """处理提取进度更新事件"""
+        if total > 0:
+            progress_value = int(current / total * 100)
+            if hasattr(self, 'home_tab') and self.home_tab:
+                try:
+                    # 使用简单直接的方式更新UI
+                    self.home_tab.update_progress(progress_value)
+                except Exception as e:
+                    print(f"更新进度条时出错: {str(e)}")
+    
+    def handle_extraction_completed(self, success, count, message):
+        """处理提取完成事件"""
+        self.extraction_finished(success, message)
+    
+    def handle_extraction_error(self, error, message):
+        """处理提取错误事件"""
+        self.logger.error(f"提取错误: {error}")
+        
+    def handle_config_changed(self, config):
+        """处理配置变更事件"""
+        # 如果需要，可以根据配置更新界面
+        pass
+    
     def setup_ui(self):
+        """设置UI组件"""
         # 主布局
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
@@ -60,295 +170,151 @@ class MainWindow(QMainWindow):
         
         # 创建选项卡
         self.tabs = QTabWidget()
-        self.main_tab = QWidget()
-        self.settings_tab = QWidget()
+        self.home_tab = HomeTab()
+        self.settings_tab = SettingsTab()
         
-        self.tabs.addTab(self.main_tab, "主页")
+        self.tabs.addTab(self.home_tab, "主页")
         self.tabs.addTab(self.settings_tab, "设置")
         
         main_layout.addWidget(self.tabs)
         
-        # 设置主选项卡
-        self.setup_main_tab()
+        # 初始化主页选项卡
+        self.init_home_tab()
         
-        # 设置设置选项卡
-        self.setup_settings_tab()
-        
-    def setup_main_tab(self):
-        # 主选项卡布局
-        main_tab_layout = QVBoxLayout(self.main_tab)
-        
-        # 配置区域
-        config_group = QGroupBox("配置")
-        config_layout = QFormLayout()
-        
-        # 游戏目录选择
-        game_layout = QHBoxLayout()
-        self.game_dir_edit = QLineEdit()
-        self.game_dir_edit.setReadOnly(True)
-        browse_btn = BrowseButton()
-        browse_btn.clicked.connect(self.select_game_dir)
-        game_layout.addWidget(self.game_dir_edit)
-        game_layout.addWidget(browse_btn)
-        config_layout.addRow("游戏目录:", game_layout)
-        
-        # 翻译目录选择
-        tl_layout = QHBoxLayout()
-        self.tl_dir_edit = QLineEdit("game/tl/schinese")
-        self.tl_dir_edit.setToolTip("相对于游戏目录的翻译文件夹路径")
-        tl_layout.addWidget(self.tl_dir_edit)
-        config_layout.addRow("翻译目录:", tl_layout)
-        
-        # 提取选项
-        self.file_patterns_edit = QLineEdit("*.rpy")
-        self.file_patterns_edit.setToolTip("用逗号分隔的文件模式，例如: *.rpy,*.rpym")
-        config_layout.addRow("文件模式:", self.file_patterns_edit)
-        
-        # 是否递归搜索子目录
-        self.recursive_checkbox = QCheckBox("递归搜索子目录")
-        self.recursive_checkbox.setChecked(True)
-        config_layout.addRow("", self.recursive_checkbox)
-
-        # 是否跳过已翻译的条目
-        self.skip_translated_checkbox = QCheckBox("跳过已翻译的条目")
-        self.skip_translated_checkbox.setChecked(True)
-        config_layout.addRow("", self.skip_translated_checkbox)
-        
-        config_group.setLayout(config_layout)
-        main_tab_layout.addWidget(config_group)
-        
-        # 操作区域
-        actions_layout = QHBoxLayout()
-        self.start_btn = ActionButton("开始提取")
-        self.start_btn.clicked.connect(self.start_extraction)
-        actions_layout.addWidget(self.start_btn)
-        main_tab_layout.addLayout(actions_layout)
-        
-        # 进度条
-        progress_layout = QHBoxLayout()
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setTextVisible(True)
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setValue(0)
-        progress_layout.addWidget(self.progress_bar)
-        main_tab_layout.addLayout(progress_layout)
-        
-        # 日志输出区域
-        log_group = QGroupBox("日志输出")
-        log_layout = QVBoxLayout()
-        self.log_text = QTextEdit()
-        self.log_text.setReadOnly(True)
-        log_layout.addWidget(self.log_text)
-        log_group.setLayout(log_layout)
-        main_tab_layout.addWidget(log_group)
-
-        # 默认日志
-        self.logger.info("欢迎使用Renpy游戏翻译提取器")
-        self.logger.info("请选择游戏目录并配置选项后，点击'开始提取'按钮")
-        self.logger.info("当前支持提取以下属性值：description、purchase_notification、unlock_notification")
+        # 显示默认日志
+        self.home_tab.display_default_log()
     
-    def setup_settings_tab(self):
-        # 设置选项卡布局
-        settings_layout = QVBoxLayout(self.settings_tab)
+    def init_home_tab(self):
+        """初始化主页选项卡的事件连接"""
+        # 连接开始提取按钮
+        self.home_tab.start_btn.clicked.connect(self.start_extraction)
         
-        # 提取模式区域
-        extraction_modes_group = QGroupBox("提取模式管理")
-        extraction_modes_layout = QVBoxLayout()
-        
-        # 提示文本
-        extraction_modes_layout.addWidget(QLabel("在此设置中您可以启用或禁用特定的提取模式:"))
-        
-        # 提取模式网格
-        modes_grid = QGridLayout()
-        
-        # 每个提取器的启用/禁用复选框
-        self.extractor_checkboxes = {}
-        
-        # 获取所有提取器
-        extractor_factory = ExtractorFactory()
-        all_extractors = extractor_factory.get_all_extractors()
-        
-        row = 0
-        for name in sorted(all_extractors.keys()):
-            checkbox = QCheckBox(name)
-            checkbox.setChecked(True)  # 默认全部启用
-            
-            # 为复选框添加描述标签
-            description = ""
-            if name == "description":
-                description = "提取属性值 'description'"
-            elif name == "purchase_notification":
-                description = "提取属性值 'purchase_notification'"
-            elif name == "unlock_notification":
-                description = "提取属性值 'unlock_notification'"
-            
-            desc_label = QLabel(description)
-            desc_label.setStyleSheet("color: #666666; font-style: italic;")
-            
-            modes_grid.addWidget(checkbox, row, 0)
-            modes_grid.addWidget(desc_label, row, 1)
-            
-            self.extractor_checkboxes[name] = checkbox
-            row += 1
-        
-        extraction_modes_layout.addLayout(modes_grid)
-        
-        # 按钮区域
-        buttons_layout = QHBoxLayout()
-        
-        select_all_btn = QPushButton("全选")
-        select_all_btn.clicked.connect(self.select_all_extractors)
-        
-        deselect_all_btn = QPushButton("取消全选")
-        deselect_all_btn.clicked.connect(self.deselect_all_extractors)
-        
-        buttons_layout.addWidget(select_all_btn)
-        buttons_layout.addWidget(deselect_all_btn)
-        buttons_layout.addStretch()  # 添加弹性空间
-        
-        extraction_modes_layout.addLayout(buttons_layout)
-        extraction_modes_group.setLayout(extraction_modes_layout)
-        
-        # 输出设置区域
-        output_settings_group = QGroupBox("输出设置")
-        output_settings_layout = QFormLayout()
-        
-        # 添加写入格式选择
-        self.writer_combo = QComboBox()
-        self.writer_combo.addItems(["renpy", "json", "csv"])
-        self.writer_combo.setToolTip("选择翻译文件的输出格式")
-        output_settings_layout.addRow("输出格式:", self.writer_combo)
-        
-        output_settings_group.setLayout(output_settings_layout)
-        
-        # 其他设置区域
-        other_settings_group = QGroupBox("其他设置")
-        other_settings_layout = QFormLayout()
-        
-        # 编码设置
-        self.encoding_combo = QComboBox()
-        self.encoding_combo.addItems(["utf-8", "gbk", "cp932", "latin1", "ascii"])
-        other_settings_layout.addRow("文件编码:", self.encoding_combo)
-        
-        # 验证器设置区域
-        validator_layout = QVBoxLayout()
-        validator_layout.addWidget(QLabel("启用的文本验证器:"))
-        
-        # 验证器复选框
-        self.validator_checkboxes = {}
-        validator_factory = ValidatorFactory()
-        all_validators = validator_factory.get_all_validators()
-        
-        # 验证器中文显示名称映射
-        validator_display_names = {
-            "non_empty": "非空验证 (过滤空文本)",
-            "has_alphanumeric": "字母数字验证 (确保包含字母或数字)",
-            "no_invalid_chars": "无效字符验证 (过滤包含无效字符的文本)"
-        }
-        
-        for name in sorted(all_validators.keys()):
-            # 使用映射中的中文名称创建复选框
-            display_name = validator_display_names.get(name, name)
-            checkbox = QCheckBox(display_name)
-            # 根据配置设置初始状态
-            checkbox.setChecked(name in ["non_empty", "no_invalid_chars"])
-            self.validator_checkboxes[name] = checkbox
-            validator_layout.addWidget(checkbox)
-        
-        other_settings_layout.addRow("验证器:", validator_layout)
-        
-        other_settings_group.setLayout(other_settings_layout)
-        
-        # 添加到布局
-        settings_layout.addWidget(extraction_modes_group)
-        settings_layout.addWidget(output_settings_group)
-        settings_layout.addWidget(other_settings_group)
-        settings_layout.addStretch()  # 添加弹性空间使控件垂直靠上
-    
-    def select_all_extractors(self):
-        """选择所有提取器"""
-        for checkbox in self.extractor_checkboxes.values():
-            checkbox.setChecked(True)
-    
-    def deselect_all_extractors(self):
-        """取消选择所有提取器"""
-        for checkbox in self.extractor_checkboxes.values():
-            checkbox.setChecked(False)
-    
-    def select_game_dir(self):
-        dir_path = QFileDialog.getExistingDirectory(self, "选择游戏目录")
-        if dir_path:
-            self.game_dir_edit.setText(dir_path)
-            # 检查游戏目录是否有效
-            if not os.path.exists(os.path.join(dir_path, "game")):
-                self.logger.warning(f"所选目录似乎不是一个标准的Renpy游戏目录，未找到game文件夹")
+        # 更新历史目录菜单
+        self.home_tab.update_history_menu(self.history_dirs)
     
     def log(self, message):
         """添加日志到日志文本框"""
-        self.log_text.append(message)
-        # 滚动到底部
-        self.log_text.verticalScrollBar().setValue(
-            self.log_text.verticalScrollBar().maximum()
-        )
+        try:
+            if hasattr(self, 'home_tab') and self.home_tab:
+                # 使用简单直接的方式更新日志
+                QApplication.instance().processEvents()  # 确保处理所有待处理的事件
+                self.home_tab.append_log(message)
+        except Exception as e:
+            print(f"日志更新错误: {str(e)}")
     
     def update_progress(self, current, total):
         """更新进度条"""
         if total > 0:
-            self.progress_bar.setValue(int(current / total * 100))
-        else:
-            self.progress_bar.setValue(0)
+            progress_value = int(current / total * 100)
+            if hasattr(self, 'home_tab') and self.home_tab:
+                self.home_tab.update_progress(progress_value)
     
+    def update_config(self):
+        """将当前UI设置更新到配置对象"""
+        # 从主页选项卡获取基本设置
+        self.config.game_dir = self.home_tab.get_game_dir()
+        self.config.translation_dir = self.home_tab.get_translation_dir()
+        self.config.write_mode = self.home_tab.get_write_mode()  # 获取写入模式
+        
+        # 从设置选项卡获取高级设置
+        self.settings_tab.update_config(self.config)
+        return self.config
+    
+    def apply_config_to_ui(self):
+        """将配置对象应用到UI"""
+        # 更新主页选项卡
+        self.home_tab.set_game_dir(self.config.game_dir)
+        self.home_tab.set_translation_dir(self.config.translation_dir)
+        self.home_tab.set_write_mode(self.config.write_mode)  # 设置写入模式
+        
+        # 更新设置选项卡
+        # 更新文件格式选择
+        if hasattr(self.settings_tab, 'file_format_checkboxes'):
+            for fmt, checkbox in self.settings_tab.file_format_checkboxes.items():
+                # 检查该格式的文件模式是否在配置中
+                pattern = f"*.{fmt}"
+                checkbox.setChecked(pattern in self.config.file_patterns)
+            
+            # 触发文件格式更新事件
+            self.settings_tab.update_extraction_modes_availability()
+        
+        # 更新递归选项和跳过已翻译选项
+        self.settings_tab.recursive_checkbox.setChecked(self.config.recursive)
+        self.settings_tab.skip_translated_checkbox.setChecked(self.config.skip_translated)
+        
+        # 更新提取器选择
+        for name, checkbox in self.settings_tab.extractor_checkboxes.items():
+            checkbox.setChecked(name in self.config.extractors)
+        
+        # 更新验证器选择
+        for name, checkbox in self.settings_tab.validator_checkboxes.items():
+            checkbox.setChecked(name in self.config.validators)
+        
+        # 更新编码选择
+        index = self.settings_tab.encoding_combo.findText(self.config.encoding)
+        if index >= 0:
+            self.settings_tab.encoding_combo.setCurrentIndex(index)
+        
     def start_extraction(self):
-        game_dir = self.game_dir_edit.text()
+        """开始提取翻译文本"""
+        game_dir = self.home_tab.get_game_dir()
         if not game_dir:
             self.logger.warning("请先选择游戏目录")
             QMessageBox.warning(self, "警告", "请先选择游戏目录")
             return
-            
+        
         # 获取选中的提取器
-        selected_extractors = [name for name, checkbox in self.extractor_checkboxes.items() 
-                              if checkbox.isChecked()]
+        selected_extractors = self.settings_tab.get_selected_extractors()
         
         if not selected_extractors:
             self.logger.warning("请选择至少一个提取器")
             QMessageBox.warning(self, "警告", "请选择至少一个提取器")
             return
-            
-        # 获取选中的验证器
-        selected_validators = [name for name, checkbox in self.validator_checkboxes.items() 
-                              if checkbox.isChecked()]
         
         # 更新配置
-        self.config.game_dir = game_dir
-        self.config.translation_dir = self.tl_dir_edit.text()
-        self.config.file_patterns = self.file_patterns_edit.text().split(',')
-        self.config.recursive = self.recursive_checkbox.isChecked()
-        self.config.skip_translated = self.skip_translated_checkbox.isChecked()
-        self.config.extractors = selected_extractors
-        self.config.validators = selected_validators  # 将选中的验证器添加到配置
-        self.config.encoding = self.encoding_combo.currentText()
-        self.config.writer_format = self.writer_combo.currentText()
+        self.update_config()
+        
+        # 如果是覆盖模式，弹出确认对话框
+        if self.config.write_mode == "overwrite":
+            reply = QMessageBox.question(
+                self,
+                "覆盖模式确认",
+                "您选择了覆盖模式，这将清空翻译目录中的所有.rpy文件并重新创建。\n任何现有的翻译都将被删除且无法恢复。\n\n确定要继续吗？",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            if reply == QMessageBox.No:
+                return
+        
+        # 发布配置变更事件
+        publish(EventNames.CONFIG_CHANGED, config=self.config)
         
         # 禁用开始按钮
-        self.start_btn.set_loading_state(True)
-        self.progress_bar.setValue(0)
+        self.home_tab.start_btn.set_loading_state(True)
+        self.home_tab.update_progress(0)
         self.logger.info("开始提取翻译文本...")
         
         # 切换到主页选项卡以显示进度
         self.tabs.setCurrentIndex(0)
         
         # 创建并启动提取线程
+        # 重要：先创建线程对象
         self.extractor_thread = ExtractorThread(self.config)
-        self.extractor_thread.progress_update.connect(self.update_progress)
+        
+        # 然后在主线程中连接信号到槽
+        self.extractor_thread.progress_update.connect(self.handle_extraction_progress)
         self.extractor_thread.log_update.connect(self.log)
         self.extractor_thread.finished_signal.connect(self.extraction_finished)
+        
+        # 最后才启动线程
         self.extractor_thread.start()
     
     def extraction_finished(self, success, message):
+        """处理提取完成事件"""
         # 重新启用开始按钮
-        self.start_btn.set_loading_state(False)
-        self.start_btn.setText("开始提取")  # 恢复原始文本
-        
+        self.home_tab.start_btn.set_loading_state(False)
+        self.home_tab.start_btn.setText("开始提取")  # 恢复原始文本
+        self.home_tab.update_progress(0)
         # 显示结果
         if success:
             self.logger.info(f"✅ {message}")
@@ -356,9 +322,51 @@ class MainWindow(QMainWindow):
         else:
             self.logger.error(message)
             QMessageBox.warning(self, "失败", message)
-            
+    
+    def on_game_dir_selected(self, dir_path):
+        """处理游戏目录选择事件"""
+        # 添加到历史记录
+        self.add_to_history_dirs(dir_path)
+        
+        # 检查游戏目录是否有效
+        if not os.path.exists(os.path.join(dir_path, "game")):
+            self.logger.warning(f"所选目录似乎不是一个标准的Renpy游戏目录，未找到game文件夹")
+        
+    def on_invalid_dir_selected(self, dir_path):
+        """处理无效目录选择事件"""
+        # 从历史记录中移除不存在的目录
+        if dir_path in self.history_dirs:
+            self.history_dirs.remove(dir_path)
+            self.save_history_dirs()
+            self.home_tab.update_history_menu(self.history_dirs)
+    
+    def on_clear_history_requested(self):
+        """处理清除历史记录请求事件"""
+        self.history_dirs = []
+        self.save_history_dirs()
+        self.home_tab.update_history_menu(self.history_dirs)
+        self.logger.info("已清除历史目录记录")
+    
     def closeEvent(self, event):
         """窗口关闭时的处理"""
+        # 自动保存配置
+        try:
+            self.update_config()
+            self.config.save_default_config()
+            self.logger.debug("配置已自动保存")
+        except Exception as e:
+            self.logger.error(f"自动保存配置失败: {str(e)}")
+        
+        # 保存历史目录
+        self.save_history_dirs()
+        
         # 移除日志回调，防止内存泄漏
         self.logger.remove_ui_callback(self.log)
+        
+        # 取消订阅所有事件
+        unsubscribe(EventNames.EXTRACTION_PROGRESS, self.handle_extraction_progress)
+        unsubscribe(EventNames.EXTRACTION_COMPLETED, self.handle_extraction_completed)
+        unsubscribe(EventNames.EXTRACTION_ERROR, self.handle_extraction_error)
+        unsubscribe(EventNames.CONFIG_CHANGED, self.handle_config_changed)
+        
         event.accept()

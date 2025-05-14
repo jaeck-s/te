@@ -2,7 +2,7 @@
 验证工厂类
 负责创建和管理文本验证器
 """
-from typing import Dict, Callable, List, Optional, Any
+from typing import Dict, Callable, List, Optional, Any, Set
 
 from ..logger import get_logger
 
@@ -14,10 +14,15 @@ class ValidatorFactory:
     
     def __init__(self) -> None:
         self.logger = get_logger()
+        # 用于全局去重的集合 - 这是关键部分，它存储了所有已见过的文本
+        self._seen_texts: Set[str] = set()
+        
         self.validators: Dict[str, Callable[[str], bool]] = {
             "non_empty": self._validate_non_empty,
             "has_alphanumeric": self._validate_has_alphanumeric,
-            "no_invalid_chars": self._validate_no_invalid_chars
+            "no_invalid_chars": self._validate_no_invalid_chars,
+            "string_consistency": self._validate_string_consistency,
+            "global_deduplicate": self._validate_global_deduplicate
         }
         self.logger.debug(f"验证工厂初始化完成，加载了 {len(self.validators)} 个验证器")
     
@@ -33,6 +38,65 @@ class ValidatorFactory:
         """验证文本不包含无效字符"""
         invalid_chars = ['\0', '\ufffd']  # 空字符和替换字符
         return not any(c in text for c in invalid_chars)
+    
+    def _validate_string_consistency(self, text: str) -> bool:
+        """
+        验证字符串一致性，确保提取的字符串与游戏显示一致，并且能够被正确地写入到翻译文件中
+        
+        简化实现：只检查基本的语法平衡，不干扰游戏中使用的任何变量或标记
+        """
+        # 检查引号和花括号是否平衡
+        brackets = {'"': 0, "'": 0, "{": 0, "}": 0}
+        escape_flag = False
+        
+        # 简单遍历字符串，检查引号和花括号是否平衡
+        for char in text:
+            if escape_flag:
+                escape_flag = False
+                continue
+                
+            if char == '\\':
+                escape_flag = True
+            elif char in brackets:
+                brackets[char] += 1
+        
+        # 确保引号成对
+        if brackets['"'] % 2 != 0:
+            self.logger.debug(f"文本 '{text[:30]}...' 中的双引号不平衡")
+            return False
+        if brackets["'"] % 2 != 0:
+            self.logger.debug(f"文本 '{text[:30]}...' 中的单引号不平衡")
+            return False
+        
+        # 确保花括号成对
+        if brackets["{"] != brackets["}"]:
+            self.logger.debug(f"文本 '{text[:30]}...' 中的花括号不平衡: {{ = {brackets['{']}, }} = {brackets['}']}")
+            return False
+        
+        # 所有检查都通过
+        return True
+    
+    def _validate_global_deduplicate(self, text: str) -> bool:
+        """
+        全局去重验证，确保在所有翻译文件中不会有重复的条目
+        """
+        # 格式化字符串，去除前后空格，便于准确比较
+        normalized_text = text.strip()
+        
+        if normalized_text in self._seen_texts:
+            self.logger.debug(f"文本 '{text[:30]}...' 已存在，被全局去重验证器拒绝")
+            return False
+        
+        # 添加到已见过的文本集合
+        self._seen_texts.add(normalized_text)
+        return True
+    
+    def reset_deduplication(self) -> None:
+        """
+        重置去重状态，清空已见过的文本集合
+        """
+        self._seen_texts.clear()
+        self.logger.debug("已重置全局去重状态")
     
     def get_validator(self, name: str) -> Optional[Callable[[str], bool]]:
         """

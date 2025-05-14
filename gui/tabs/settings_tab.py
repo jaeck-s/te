@@ -25,10 +25,11 @@ class SettingsTab(BaseTab):
         self.recursive_checkbox = None
         self.skip_translated_checkbox = None
         self.file_format_checkboxes = {}
+        self.person_name_writer_checkbox = None
         
         # 设置布局
         self.setup_ui()
-    
+        
     def setup_ui(self):
         """设置UI组件"""
         # 配置保存/加载区域
@@ -45,7 +46,7 @@ class SettingsTab(BaseTab):
         
         # 添加弹性空间使控件垂直靠上
         self.add_stretch()
-    
+        
     def create_config_management_group(self):
         """创建配置管理设置组"""
         config_group = QGroupBox("配置管理")
@@ -65,7 +66,7 @@ class SettingsTab(BaseTab):
         
         config_group.setLayout(config_layout)
         return config_group
-    
+        
     def create_file_format_group(self):
         """创建文件格式选择组"""
         file_format_group = QGroupBox("文件格式")
@@ -130,6 +131,9 @@ class SettingsTab(BaseTab):
             elif name == "json_display_name":
                 file_format = "json"
                 description = "从JSON文件中提取 'display_name' 字段"
+            elif name == "json_person_name":
+                file_format = "json"
+                description = "从JSON文件中提取 'first_name'和'last_name' 字段"
             
             desc_label = QLabel(description)
             desc_label.setStyleSheet("color: #666666; font-style: italic;")
@@ -199,6 +203,12 @@ class SettingsTab(BaseTab):
         self.skip_translated_checkbox.setToolTip("启用后将跳过已经存在翻译的条目")
         extraction_options_layout.addWidget(self.skip_translated_checkbox)
         
+        # 添加人名处理选项
+        self.person_name_writer_checkbox = QCheckBox("使用人名专用写入器")
+        self.person_name_writer_checkbox.setChecked(False)
+        self.person_name_writer_checkbox.setToolTip("启用后将为JSON文件中的first_name和last_name生成特殊的翻译条目")
+        extraction_options_layout.addWidget(self.person_name_writer_checkbox)
+        
         other_settings_layout.addRow("提取选项:", extraction_options_layout)
         
         # 编码设置
@@ -233,8 +243,8 @@ class SettingsTab(BaseTab):
             validator_layout.addWidget(checkbox)
         
         other_settings_layout.addRow("验证器:", validator_layout)
-        other_settings_group.setLayout(other_settings_layout)
         
+        other_settings_group.setLayout(other_settings_layout)
         return other_settings_group
     
     def select_all_extractors(self):
@@ -304,6 +314,10 @@ class SettingsTab(BaseTab):
         config.recursive = self.recursive_checkbox.isChecked()
         config.skip_translated = self.skip_translated_checkbox.isChecked()
         config.file_patterns = self.get_file_patterns()  # 使用文件格式选择生成文件模式
+        
+        # 更新人名写入器设置
+        config.use_person_name_writer = self.person_name_writer_checkbox.isChecked()
+        
         return config
     
     def save_current_config(self):

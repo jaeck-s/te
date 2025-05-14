@@ -150,7 +150,7 @@ class MainWindow(QMainWindow):
     
     def handle_extraction_completed(self, success, count, message):
         """处理提取完成事件"""
-        self.extraction_finished(success, message)
+        pass
     
     def handle_extraction_error(self, error, message):
         """处理提取错误事件"""

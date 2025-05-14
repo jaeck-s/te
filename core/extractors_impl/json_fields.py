@@ -75,3 +75,67 @@ def extract_display_name(content: str, filepath: str) -> List[Tuple[int, str]]:
     except Exception:
         # 其他异常处理
         return []
+
+def extract_person_name(content: str, filepath: str) -> List[Tuple[int, str]]:
+    """
+    从JSON文件中提取人名相关字段(first_name和last_name)
+    
+    Args:
+        content: JSON文件内容
+        filepath: 文件路径(用于日志)
+        
+    Returns:
+        提取的(行号, 文本内容)列表，其中行号包含额外编码：
+        - 正数表示常规字段（如display_name）
+        - -1表示first_name字段
+        - -2表示last_name字段
+        负数用来在写入器中区分不同类型的名字字段
+    """
+    try:
+        # 移除JSON注释 (如果存在)
+        content = re.sub(r'//.*$', '', content, flags=re.MULTILINE)
+        
+        # 解析JSON
+        json_data = json.loads(content)
+        
+        # 存储结果，使用特殊行号标记不同类型的名字
+        result = []
+        
+        # 递归查找first_name和last_name
+        def extract_names(data, path="", json_id=None):
+            if isinstance(data, dict):
+                # 记录当前JSON对象的ID，用于后续将first_name和last_name关联
+                current_json_id = data.get("id", json_id)
+                
+                first_name = data.get("first_name")
+                last_name = data.get("last_name")
+                
+                # 如果找到first_name和/或last_name，添加到结果中
+                if first_name and isinstance(first_name, str):
+                    # 使用-1作为first_name的标记
+                    result.append((-1, first_name))
+                
+                if last_name and isinstance(last_name, str):
+                    # 使用-2作为last_name的标记
+                    result.append((-2, last_name))
+                
+                # 继续递归处理嵌套对象
+                for key, value in data.items():
+                    if isinstance(value, (dict, list)):
+                        extract_names(value, f"{path}.{key}", current_json_id)
+            
+            elif isinstance(data, list):
+                for i, item in enumerate(data):
+                    if isinstance(item, (dict, list)):
+                        extract_names(item, f"{path}[{i}]", json_id)
+        
+        # 开始递归提取
+        extract_names(json_data)
+        return result
+        
+    except json.JSONDecodeError:
+        # 如果JSON解析失败，返回空列表
+        return []
+    except Exception:
+        # 其他异常处理
+        return []

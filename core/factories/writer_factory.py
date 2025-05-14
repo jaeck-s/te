@@ -24,6 +24,7 @@ class WriterFactory:
         self.logger = get_logger()
         self.writers: Dict[str, Callable] = {
             "renpy": self._write_renpy_translation,
+            "person_name": self._write_person_name_translation,  # 新增人名写入器
         }
         self.logger.debug(f"写入工厂初始化完成，加载了 {len(self.writers)} 个写入器")
     
@@ -88,6 +89,118 @@ class WriterFactory:
             self.logger.error(f"写入文件 {filepath} 失败: {str(e)}")
             return False
     
+    def _write_person_name_translation(self, filepath: str, entries: List[Tuple[int, str]], 
+                                     rel_path: str, config: Any) -> bool:
+        """
+        写入人名翻译文件，专门处理first_name和last_name
+        
+        Args:
+            filepath: 目标文件路径
+            entries: 需要写入的条目列表 [(行号, 文本)]
+            rel_path: 源文件相对路径
+            config: 配置对象
+            
+        Returns:
+            写入是否成功
+        """
+        try:
+            # 获取写入模式
+            write_mode = getattr(config, "write_mode", self.MODE_APPEND)
+            
+            # 修改为将所有人名条目写入到name子文件夹下的name.rpy文件中
+            # 获取翻译目录
+            translation_dir = os.path.join(config.game_dir, config.translation_dir)
+            
+            # 创建name子文件夹
+            name_dir = os.path.join(translation_dir, "name")
+            os.makedirs(name_dir, exist_ok=True)
+            
+            # 统一目标文件路径为name/name.rpy
+            target_filepath = os.path.join(name_dir, "name.rpy")
+            
+            # 如果是覆盖模式，先处理name.rpy文件
+            if write_mode == self.MODE_OVERWRITE and os.path.exists(target_filepath):
+                try:
+                    os.remove(target_filepath)
+                    self.logger.debug(f"已清空人名翻译文件: {target_filepath}")
+                except Exception as e:
+                    self.logger.error(f"清空人名翻译文件时出错: {str(e)}")
+            
+            # 准备文件内容
+            file_header = 'translate schinese strings:\n\n'
+            generated_content = ''
+            
+            # 如果文件不存在或不包含标准头，添加标准头
+            if not os.path.exists(target_filepath) or file_header not in open(target_filepath, 'r', encoding=config.encoding).read():
+                generated_content = file_header
+            
+            # 处理人名条目 - 从entries中收集first_name和last_name
+            first_names = {}  # 存储first_name，键是文件名
+            last_names = {}   # 存储last_name，键是文件名
+            
+            # 使用源文件名作为标识将同一个文件的名字进行分组
+            source_basename = os.path.basename(rel_path)
+            
+            # 先收集所有的first_name和last_name
+            for line_num, text in entries:
+                if line_num == -1:  # first_name
+                    first_names[source_basename] = text
+                elif line_num == -2:  # last_name
+                    last_names[source_basename] = text
+            
+            # 处理每个文件的人名组合
+            processed_files = set()
+            
+            for file_id in set(first_names.keys()) | set(last_names.keys()):
+                if file_id in processed_files:
+                    continue
+                    
+                processed_files.add(file_id)
+                
+                first_name = first_names.get(file_id, "")
+                last_name = last_names.get(file_id, "")
+                
+                # 添加注释表明源文件
+                generated_content += f'    # From {file_id}\n'
+                
+                # 1. 添加first_name条目
+                if first_name:
+                    escaped_text = first_name.replace('"', '\\"')
+                    generated_content += f'    old "{escaped_text}"\n'
+                    generated_content += f'    new ""\n\n'
+                
+                # 2. 添加last_name条目
+                if last_name:
+                    escaped_text = last_name.replace('"', '\\"')
+                    generated_content += f'    old "{escaped_text}"\n'
+                    generated_content += f'    new ""\n\n'
+                
+                # 3. 添加组合名条目（first_name + " " + last_name）
+                if first_name and last_name:
+                    full_name = f"{first_name} {last_name}"
+                    escaped_text = full_name.replace('"', '\\"')
+                    generated_content += f'    old "{escaped_text}"\n'
+                    generated_content += f'    new ""\n\n'
+            
+            # 写入文件
+            mode = 'a' if os.path.exists(target_filepath) and write_mode != self.MODE_OVERWRITE else 'w'
+            with open(target_filepath, mode, encoding=config.encoding) as f:
+                f.write(generated_content)
+                
+            self.logger.debug(f"成功写入人名翻译条目到 {target_filepath}")
+            
+            # 发布文件保存事件
+            entry_count = sum(1 for f in processed_files if f in first_names) + \
+                         sum(1 for f in processed_files if f in last_names) + \
+                         sum(1 for f in processed_files if f in first_names and f in last_names)
+            publish(EventNames.FILE_SAVED, filepath=target_filepath, entry_count=entry_count, format="person_name")
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"写入人名文件失败: {str(e)}")
+            return False
+    
     def _handle_overwrite_mode(self, filepath: str, config: Any) -> None:
         """
         处理覆盖模式下的文件清理
@@ -139,7 +252,7 @@ class WriterFactory:
     def write_translation_file(self, name: str, filepath: str, entries: List[Tuple[int, str]], 
                               rel_path: str, config: Any) -> bool:
         """
-        使用renpy写入器写入翻译文件
+        使用指定的写入器写入翻译文件
         
         Args:
             name: 写入器名称
@@ -151,5 +264,15 @@ class WriterFactory:
         Returns:
             写入是否成功
         """
-        # 忽略name参数，总是使用renpy写入器
-        return self._write_renpy_translation(filepath, entries, rel_path, config)
+        # 检查当前entries是否包含人名条目（行号为负数的条目）
+        has_person_name = any(line_num < 0 for line_num, _ in entries)
+
+        # 如果config中启用了人名写入器且当前entries包含人名条目
+        use_person_name_writer = getattr(config, "use_person_name_writer", False) and has_person_name
+        
+        if use_person_name_writer:
+            # 使用人名写入器，但传递rel_path而不是从filepath中提取basename
+            return self._write_person_name_translation(filepath, entries, rel_path, config)
+        else:
+            # 使用标准renpy写入器
+            return self._write_renpy_translation(filepath, entries, rel_path, config)

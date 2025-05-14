@@ -25,6 +25,9 @@ class TranslationConfig:
         self.writer_format = "renpy"    # 输出文件格式，固定为renpy
         self.write_mode = "append"      # 写入模式: append(追加) 或 overwrite(覆盖)
         
+        # 人名处理设置
+        self.use_person_name_writer = False  # 是否启用人名专用写入器
+        
         # 其他设置
         self.encoding = "utf-8"      # 文件编码
         self.max_threads = 1         # 最大线程数（暂时未使用）
@@ -46,6 +49,7 @@ class TranslationConfig:
             "validators": self.validators,
             "writer_format": self.writer_format,
             "write_mode": self.write_mode,  # 添加写入模式
+            "use_person_name_writer": self.use_person_name_writer,  # 添加人名写入器设置
             "encoding": self.encoding,
             "max_threads": self.max_threads
         }
@@ -70,6 +74,8 @@ class TranslationConfig:
             self.writer_format = data["writer_format"]
         if "write_mode" in data:
             self.write_mode = data["write_mode"]
+        if "use_person_name_writer" in data:
+            self.use_person_name_writer = data["use_person_name_writer"]
         if "encoding" in data:
             self.encoding = data["encoding"]
         if "max_threads" in data:

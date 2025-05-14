@@ -8,7 +8,7 @@ from ..extractors_impl.rpy_properties import (
     extract_purchase_notification,
     extract_unlock_notification
 )
-from ..extractors_impl.json_fields import extract_display_name
+from ..extractors_impl.json_fields import extract_display_name, extract_person_name
 from ..logger import get_logger
 
 class ExtractorFactory:
@@ -24,7 +24,8 @@ class ExtractorFactory:
             "description": extract_description,
             "purchase_notification": extract_purchase_notification,
             "unlock_notification": extract_unlock_notification,
-            "json_display_name": extract_display_name,  # 新增JSON提取器
+            "json_display_name": extract_display_name,  # 已有JSON提取器
+            "json_person_name": extract_person_name,    # 新增人名提取器
         }
         self.logger.debug(f"提取工厂初始化完成，加载了 {len(self.extractors)} 个提取器")
     

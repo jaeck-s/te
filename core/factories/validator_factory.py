@@ -3,6 +3,7 @@
 负责创建和管理文本验证器
 """
 from typing import Dict, Callable, List, Optional, Any, Set
+import re
 
 from ..logger import get_logger
 
@@ -23,7 +24,8 @@ class ValidatorFactory:
             "no_invalid_chars": self._validate_no_invalid_chars,
             "string_consistency": self._validate_string_consistency,
             "global_deduplicate": self._validate_global_deduplicate,
-            "no_underscore": self._validate_no_underscore  # 新增验证器
+            "no_underscore": self._validate_no_underscore,  # 新增验证器
+            "no_webp": self._validate_no_webp  # 添加新的验证器
         }
         self.logger.debug(f"验证工厂初始化完成，加载了 {len(self.validators)} 个验证器")
     
@@ -51,23 +53,51 @@ class ValidatorFactory:
         escape_flag = False
         
         # 简单遍历字符串，检查引号和花括号是否平衡
-        for char in text:
+        # 但需要特殊处理英语中的撇号（所有格's和缩写n't等）
+        i = 0
+        while i < len(text):
+            char = text[i]
+            
             if escape_flag:
                 escape_flag = False
+                i += 1
                 continue
                 
             if char == '\\':
                 escape_flag = True
+            elif char == "'":
+                # 特殊处理可能的撇号情况
+                # 检查是否是英语中常见的撇号模式：
+                # 1. 's, 't, 'd, 'll, 've, 're 等所有格或缩写形式
+                # 2. n't 形式的否定缩写
+                if i > 0 and i < len(text) - 1:
+                    if text[i-1].isalpha() and (text[i+1] in "stdlrvm" or (i < len(text) - 2 and text[i+1:i+3] == "re")):
+                        # 这可能是一个缩写，不计入引号计数
+                        pass
+                    elif i > 1 and text[i-2:i] == "n'" and i < len(text) - 1 and text[i+1] == "t":
+                        # n't 形式的否定缩写
+                        pass
+                    else:
+                        # 其他情况视为普通单引号
+                        brackets["'"] += 1
+                else:
+                    # 字符串开头或结尾的单引号，直接计数
+                    brackets["'"] += 1
             elif char in brackets:
                 brackets[char] += 1
+            
+            i += 1
         
-        # 确保引号成对
+        # 确保双引号成对
         if brackets['"'] % 2 != 0:
             self.logger.debug(f"文本 '{text[:30]}...' 中的双引号不平衡")
             return False
+        
+        # 确保单引号成对 - 考虑到撇号的特殊处理后，应该是成对的
         if brackets["'"] % 2 != 0:
-            self.logger.debug(f"文本 '{text[:30]}...' 中的单引号不平衡")
-            return False
+            # 记录日志但不要直接拒绝，可能是一些复杂的英语缩写导致误判
+            self.logger.debug(f"文本 '{text[:30]}...' 中的单引号不平衡 (可能包含缩写或所有格)")
+            # 不返回 False，允许通过验证
         
         # 确保花括号成对
         if brackets["{"] != brackets["}"]:
@@ -94,16 +124,52 @@ class ValidatorFactory:
     
     def _validate_no_underscore(self, text: str) -> bool:
         """
-        验证文本不包含下划线
+        验证文本不包含下划线，但允许中括号和花括号内的下划线
         
         Args:
             text: 要验证的文本
             
         Returns:
-            如果文本不包含下划线则返回True，否则返回False
+            如果文本不包含不允许的下划线则返回True，否则返回False
         """
-        if '_' in text:
-            self.logger.debug(f"文本 '{text[:30]}...' 包含下划线，被拒绝提取")
+        # 定义正则表达式模式来匹配花括号和中括号内的内容
+        bracket_patterns = [
+            r'\{[^{}]*\}',  # 匹配花括号 {...} 内的内容
+            r'\[[^\[\]]*\]'  # 匹配中括号 [...] 内的内容
+        ]
+        
+        # 创建一个文本的副本
+        processed_text = text
+        
+        # 将所有括号内的内容替换为占位符
+        for pattern in bracket_patterns:
+            # 使用一个只包含字母的占位符来替换括号内容，避免添加额外的下划线
+            processed_text = re.sub(pattern, "PLACEHOLDER", processed_text)
+        
+        # 在处理后的文本中检查下划线
+        if '_' in processed_text:
+            self.logger.debug(f"文本 '{text[:30]}...' 包含不允许的下划线，被拒绝提取")
+            return False
+            
+        return True
+    
+    def _validate_no_webp(self, text: str) -> bool:
+        """
+        验证文本不包含.webp扩展名，使用正则表达式确保只匹配真正的文件引用
+        
+        Args:
+            text: 要验证的文本
+            
+        Returns:
+            如果文本不包含.webp文件引用则返回True，否则返回False
+        """
+        # 匹配更精确的模式：
+        # 1. 文件路径格式的.webp: xxx/xxx.webp 或 xxx\\xxx.webp
+        # 2. 直接的文件名引用: xxx.webp
+        # 3. 引号内的文件名: "xxx.webp" 或 'xxx.webp'
+        # 确保.webp在单词边界或字符串结尾
+        if re.search(r'(?:\/|\\|\s|^|\")([^\/\\"\s]+)\.webp(?:\b|"|\'|$)', text.lower()):
+            self.logger.debug(f"文本 '{text[:30]}...' 包含.webp文件引用，被拒绝提取")
             return False
         return True
     

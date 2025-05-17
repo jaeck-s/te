@@ -200,6 +200,12 @@ class TranslationExtractor:
             rel_path = os.path.relpath(src_file, os.path.join(self.config.game_dir, "game"))
             dst_file = os.path.join(translation_dir, rel_path)
             
+            # 如果源文件是JSON格式，将目标文件的扩展名转换为.rpy
+            if dst_file.lower().endswith('.json'):
+                dst_file = os.path.splitext(dst_file)[0] + '.rpy'
+                # 确保目录存在
+                os.makedirs(os.path.dirname(dst_file), exist_ok=True)
+            
             # 读取已有翻译（如果存在）
             new_entries = entries
             if os.path.exists(dst_file) and self.config.skip_translated:

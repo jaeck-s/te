@@ -264,6 +264,10 @@ class WriterFactory:
         Returns:
             写入是否成功
         """
+        # 如果目标文件是JSON格式，转换为RPY格式
+        if filepath.lower().endswith('.json'):
+            filepath = os.path.splitext(filepath)[0] + '.rpy'
+        
         # 检查当前entries是否包含人名条目（行号为负数的条目）
         has_person_name = any(line_num < 0 for line_num, _ in entries)
 

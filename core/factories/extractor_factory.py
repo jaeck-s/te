@@ -9,9 +9,15 @@ from ..extractors_impl.rpy_properties import (
     extract_unlock_notification,
     extract_title_text,
     extract_description_text,
-    extract_renpy_notify
+    extract_renpy_notify,
+    extract_name,
+    extract_dict_keys,
+    extract_sponsor_description,
+    extract_tooltip,  # 添加tooltip提取器
+    extract_text,        # 添加text提取器
+    extract_textbutton   # 添加textbutton提取器
 )
-from ..extractors_impl.json_fields import extract_display_name, extract_person_name
+from ..extractors_impl.json_fields import extract_display_name, extract_person_name, extract_json_description
 from ..logger import get_logger
 
 class ExtractorFactory:
@@ -32,6 +38,13 @@ class ExtractorFactory:
             "renpy_notify": extract_renpy_notify,
             "json_display_name": extract_display_name,
             "json_person_name": extract_person_name,
+            "json_description": extract_json_description,
+            "name": extract_name,
+            "dict_keys": extract_dict_keys,
+            "sponsor_description": extract_sponsor_description,
+            "tooltip": extract_tooltip,
+            "text": extract_text,            # 注册text提取器
+            "textbutton": extract_textbutton  # 注册textbutton提取器
         }
         self.logger.debug(f"提取工厂初始化完成，加载了 {len(self.extractors)} 个提取器")
     

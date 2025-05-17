@@ -22,5 +22,9 @@
   "no_underscore": {
     "desc": "无下划线 (禁止提取包含下划线的文本)",
     "default_enabled": false
+  },
+  "no_webp": {
+    "desc": "无.webp扩展名 (过滤包含.webp扩展名的文本)",
+    "default_enabled": true
   }
 }

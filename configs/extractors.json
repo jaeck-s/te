@@ -29,6 +29,42 @@
     "format": "rpy",
     "default_enabled": true
   },
+  "name": {
+    "group": "basic_props",
+    "desc": "提取属性值 'name'",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "sponsor_description": {
+    "group": "basic_props",
+    "desc": "提取属性值 'sponsor_description'",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "tooltip": {
+    "group": "basic_props",
+    "desc": "提取screen中的tooltip属性值",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "text": {
+    "group": "basic_props",
+    "desc": "提取screen中的text标签文本",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "textbutton": {
+    "group": "basic_props",
+    "desc": "提取screen中的textbutton标签文本",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "dict_keys": {
+    "group": "rpy_dict",
+    "desc": "提取'generic'和'cold'键中的字符串值数组",
+    "format": "rpy",
+    "default_enabled": true
+  },
   "renpy_notify": {
     "group": "func_props",
     "desc": "提取函数调用 'renpy.notify'",
@@ -44,6 +80,12 @@
   "json_person_name": {
     "group": "json",
     "desc": "从JSON文件中提取 'first_name'和'last_name' 字段",
+    "format": "json",
+    "default_enabled": true
+  },
+  "json_description": {
+    "group": "json",
+    "desc": "从JSON文件中提取 'description' 字段",
     "format": "json",
     "default_enabled": true
   }

@@ -282,6 +282,10 @@ class ExtractorGroup(QWidget):
         rpy_basic_group = QGroupBox("RPY文件基本属性提取")
         rpy_basic_layout = QVBoxLayout(rpy_basic_group)
         
+        # 创建RPY字典值组 - 添加新组
+        rpy_dict_group = QGroupBox("RPY文件字典值提取")
+        rpy_dict_layout = QVBoxLayout(rpy_dict_group)
+        
         # 创建RPY函数调用组
         rpy_func_group = QGroupBox("RPY文件函数调用提取")
         rpy_func_layout = QVBoxLayout(rpy_func_group)
@@ -292,11 +296,13 @@ class ExtractorGroup(QWidget):
         
         # 初始化组引用
         basic_extractors = {}
+        rpy_dict_extractors = {}  # 添加新组引用
         func_extractors = {}
         json_extractors = {}
         
         self.extractor_groups = {
             "basic_props": basic_extractors,
+            "rpy_dict": rpy_dict_extractors,  # 注册新的组
             "func_props": func_extractors,
             "json": json_extractors
         }
@@ -344,6 +350,9 @@ class ExtractorGroup(QWidget):
             if group == "basic_props":
                 rpy_basic_layout.addWidget(option_widget)
                 basic_extractors[name] = checkbox
+            elif group == "rpy_dict":  # 添加新组的处理
+                rpy_dict_layout.addWidget(option_widget)
+                rpy_dict_extractors[name] = checkbox
             elif group == "func_props":
                 rpy_func_layout.addWidget(option_widget)
                 func_extractors[name] = checkbox
@@ -353,6 +362,7 @@ class ExtractorGroup(QWidget):
         
         # 添加组到主布局
         self.main_layout.addWidget(rpy_basic_group)
+        self.main_layout.addWidget(rpy_dict_group)  # 添加字典提取组到UI
         self.main_layout.addWidget(rpy_func_group)
         self.main_layout.addWidget(json_group)
     

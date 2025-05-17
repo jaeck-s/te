@@ -59,6 +59,24 @@
     "format": "rpy",
     "default_enabled": true
   },
+  "available_tooltip": {
+    "group": "basic_props",
+    "desc": "提取字典中的available_tooltip属性值",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "unavailable_tooltip": {
+    "group": "basic_props",
+    "desc": "提取字典中的unavailable_tooltip属性值",
+    "format": "rpy",
+    "default_enabled": true
+  },
+  "unavailable_notification": {
+    "group": "basic_props",
+    "desc": "提取字典中的unavailable_notification属性值",
+    "format": "rpy",
+    "default_enabled": true
+  },
   "dict_keys": {
     "group": "rpy_dict",
     "desc": "提取'generic'和'cold'键中的字符串值数组",

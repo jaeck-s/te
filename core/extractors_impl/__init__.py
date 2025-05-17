@@ -10,7 +10,10 @@ from .rpy_properties import (
     extract_dict_keys,
     extract_sponsor_description,
     extract_tooltip,
-    extract_text,        # 添加text提取器
-    extract_textbutton   # 添加textbutton提取器
+    extract_text,
+    extract_textbutton,
+    extract_available_tooltip,      # 添加新提取器
+    extract_unavailable_tooltip,    # 添加新提取器
+    extract_unavailable_notification  # 添加新提取器
 )
 from .json_fields import extract_display_name, extract_person_name, extract_json_description

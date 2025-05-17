@@ -23,34 +23,39 @@ UNLOCK_NOTIFICATION_PATTERN = create_property_pattern('unlock_notification')
 
 # 新增三种提取模式的正则表达式
 # 匹配 title_text= 模式
-TITLE_TEXT_PATTERN = r'title_text\s*=\s*((?:f)?{})'.format(STRING_PATTERN)
+TITLE_TEXT_PATTERN = r'title_text\s*=\s*((?:f)?{0})'.format(STRING_PATTERN)
 
 # 匹配 description_text= 模式
-DESCRIPTION_TEXT_PATTERN = r'description_text\s*=\s*((?:f)?{})'.format(STRING_PATTERN)
+DESCRIPTION_TEXT_PATTERN = r'description_text\s*=\s*((?:f)?{0})'.format(STRING_PATTERN)
 
 # 匹配 renpy.notify 函数调用
-RENPY_NOTIFY_PATTERN = r'renpy\.notify\s*\(\s*((?:f)?{})\s*\)'.format(STRING_PATTERN)
+RENPY_NOTIFY_PATTERN = r'renpy\.notify\s*\(\s*((?:f)?{0})\s*\)'.format(STRING_PATTERN)
 
-# 匹配 name= 模式
-NAME_PATTERN = r'name\s*=\s*((?:f)?{})'.format(STRING_PATTERN)
+# 匹配 name= 模式 - 修复索引问题
+NAME_PATTERN = r'name\s*=\s*((?:f)?{0})'.format(STRING_PATTERN)
 
 # 添加直接匹配"generic"和"cold"键的模式
 GENERIC_KEY_PATTERN = r'"generic"[\s]*:[\s]*\[((?:{0}[\s]*,[\s]*)*{0}?)[\s]*\]'.format(STRING_PATTERN)
 COLD_KEY_PATTERN = r'"cold"[\s]*:[\s]*\[((?:{0}[\s]*,[\s]*)*{0}?)[\s]*\]'.format(STRING_PATTERN)
 
 # 匹配 sponsor_description= 模式
-SPONSOR_DESCRIPTION_PATTERN = r'sponsor_description\s*=\s*((?:f)?{})'.format(STRING_PATTERN)
+SPONSOR_DESCRIPTION_PATTERN = r'sponsor_description\s*=\s*((?:f)?{0})'.format(STRING_PATTERN)
 
 # 匹配 tooltip 属性
-TOOLTIP_PATTERN = r'tooltip\s+((?:f)?{})'.format(STRING_PATTERN)
+TOOLTIP_PATTERN = r'tooltip\s+((?:f)?{0})'.format(STRING_PATTERN)
 
 # 匹配 text 标签内容
 # 支持简单形式 text "文本" 和带属性形式 text "文本" size xx color xx
-TEXT_PATTERN = r'text\s+((?:f)?{})'.format(STRING_PATTERN)
+TEXT_PATTERN = r'text\s+((?:f)?{0})'.format(STRING_PATTERN)
 
 # 匹配 textbutton 标签内容
 # 格式如: textbutton "文本" 或 textbutton f"文本 {变量}"
-TEXTBUTTON_PATTERN = r'textbutton\s+((?:f)?{})'.format(STRING_PATTERN)
+TEXTBUTTON_PATTERN = r'textbutton\s+((?:f)?{0})'.format(STRING_PATTERN)
+
+# 修改匹配模式以适应实际代码中的格式 - 统一使用相同的模式格式
+AVAILABLE_TOOLTIP_PATTERN = r'["\']available_tooltip["\'][\s]*:[\s]*((?:f)?{0})'.format(STRING_PATTERN)
+UNAVAILABLE_TOOLTIP_PATTERN = r'["\']unavailable_tooltip["\'][\s]*:[\s]*((?:f)?{0})'.format(STRING_PATTERN)
+UNAVAILABLE_NOTIFICATION_PATTERN = r'["\']unavailable_notification["\'][\s]*:[\s]*((?:f)?{0})'.format(STRING_PATTERN)
 
 # 多行注释模式（用于排除注释中的内容）
 MULTILINE_COMMENT_PATTERN = r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\''

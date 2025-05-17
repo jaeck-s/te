@@ -17,6 +17,9 @@ from ..regex.rpy_patterns import (
     TOOLTIP_PATTERN,  # 添加tooltip模式
     TEXT_PATTERN,        # 添加text模式
     TEXTBUTTON_PATTERN,  # 添加textbutton模式
+    AVAILABLE_TOOLTIP_PATTERN,      # 添加新模式
+    UNAVAILABLE_TOOLTIP_PATTERN,    # 添加新模式
+    UNAVAILABLE_NOTIFICATION_PATTERN,  # 添加新模式
     GENERIC_KEY_PATTERN,  # 更改为新的模式
     COLD_KEY_PATTERN,     # 更改为新的模式
     STRING_PATTERN
@@ -92,6 +95,18 @@ def extract_textbutton(content: str, filepath: str) -> List[Tuple[int, str]]:
     """提取textbutton标签文本"""
     return extract_property_values(content, filepath, TEXTBUTTON_PATTERN, "textbutton")
 
+def extract_available_tooltip(content: str, filepath: str) -> List[Tuple[int, str]]:
+    """提取available_tooltip属性值"""
+    return extract_property_values(content, filepath, AVAILABLE_TOOLTIP_PATTERN, "available_tooltip")
+
+def extract_unavailable_tooltip(content: str, filepath: str) -> List[Tuple[int, str]]:
+    """提取unavailable_tooltip属性值"""
+    return extract_property_values(content, filepath, UNAVAILABLE_TOOLTIP_PATTERN, "unavailable_tooltip")
+
+def extract_unavailable_notification(content: str, filepath: str) -> List[Tuple[int, str]]:
+    """提取unavailable_notification属性值"""
+    return extract_property_values(content, filepath, UNAVAILABLE_NOTIFICATION_PATTERN, "unavailable_notification")
+
 def extract_dict_keys(content: str, filepath: str) -> List[Tuple[int, str]]:
     """
     提取所有"generic": [...]和"cold": [...]字符串块中的字符串值
@@ -115,7 +130,9 @@ def extract_dict_keys(content: str, filepath: str) -> List[Tuple[int, str]]:
     # 定义要查找的起始关键字
     key_starts = [
         '"generic":', '"broke":','"modest":','"brilliant":','"obedient":','"sharp":','"rich":','"famous":',
-        '"cold":','"rebellious":','"stressed":'
+        '"cold":','"rebellious":','"stressed":',
+        '"person_doing_action != player":',
+        '"selected_clothing_item and selected_clothing_item.owner.id == selected_girl.id":'
     ]
     
     # 对每个关键字进行处理

@@ -1,0 +1,24 @@
+{
+  "fields": {
+    "display_name": {
+      "description": "",
+      "enabled": false
+    },
+    "description": {
+      "description": "",
+      "enabled": false
+    },
+    "title": {
+      "description": "",
+      "enabled": false
+    },
+    "message": {
+      "description": "",
+      "enabled": false
+    },
+    "content": {
+      "description": "",
+      "enabled": false
+    }
+  }
+}

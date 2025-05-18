@@ -236,4 +236,4 @@ class HomeTab(BaseTab):
         """显示默认日志信息"""
         self.logger.info("欢迎使用Renpy游戏翻译提取器")
         self.logger.info("请选择游戏目录并配置选项后，点击'开始提取'按钮")
-        self.logger.info("当前支持提取以下属性值和函数：description、purchase_notification、unlock_notification、title_text、description_text、renpy.notify")
+        self.logger.info("当前支持提取以下属性值和函数：各种自定义属性、字典键名、renpy.notify等")

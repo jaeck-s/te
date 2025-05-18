@@ -8,6 +8,7 @@ from core.logger import get_logger
 from core.events import get_event_manager, EventNames, publish
 from gui.components.styles import StyleManager
 from core.config import TranslationConfig
+from utils.config_migration import migrate_custom_properties
 
 def main():
     # 确保工作目录正确
@@ -23,6 +24,12 @@ def main():
         
         # 创建dict_keys.json默认文件（如果不存在）
         ensure_dict_keys_file()
+        
+        # 创建custom_properties.json默认文件（如果不存在）
+        ensure_custom_properties_file()
+        
+        # 创建json_fields.json默认文件（如果不存在）
+        ensure_json_fields_file()
         
         # 创建并加载默认配置
         config = TranslationConfig()
@@ -71,6 +78,63 @@ def ensure_dict_keys_file():
         with open(config_path, 'w', encoding='utf-8') as f:
             import json
             json.dump({"key_names": default_keys}, f, ensure_ascii=False, indent=2)
+
+def ensure_custom_properties_file():
+    """确保custom_properties.json文件存在，如果不存在则创建"""
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "custom_properties.json")
+    
+    if not os.path.exists(config_path):
+        # 创建目录（如果不存在）
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        
+        # 默认属性配置列表 - 使用新的列表格式，包含所有原有基本属性
+        default_properties = [
+            # 等号赋值的属性
+            {"name": "description", "type": 1, "enabled": True},
+            {"name": "purchase_notification", "type": 1, "enabled": True},
+            {"name": "unlock_notification", "type": 1, "enabled": True},
+            {"name": "title_text", "type": 1, "enabled": True},
+            {"name": "description_text", "type": 1, "enabled": True},
+            {"name": "name", "type": 1, "enabled": True},
+            {"name": "sponsor_description", "type": 1, "enabled": True},
+            
+            # 空格隔开的属性
+            {"name": "tooltip", "type": 3, "enabled": True},
+            {"name": "text", "type": 3, "enabled": True},
+            {"name": "textbutton", "type": 3, "enabled": True},
+            
+            # 键值对形式的属性
+            {"name": "available_tooltip", "type": 2, "enabled": True},
+            {"name": "unavailable_tooltip", "type": 2, "enabled": True},
+            {"name": "unavailable_notification", "type": 2, "enabled": True}
+        ]
+        
+        # 创建默认配置
+        with open(config_path, 'w', encoding='utf-8') as f:
+            import json
+            json.dump({"properties": default_properties}, f, ensure_ascii=False, indent=2)
+
+def ensure_json_fields_file():
+    """确保json_fields.json文件存在，如果不存在则创建"""
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "json_fields.json")
+    
+    if not os.path.exists(config_path):
+        # 创建目录（如果不存在）
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        
+        # 默认JSON字段配置
+        default_fields = {
+            "display_name": {"description": "显示名称", "enabled": True},
+            "description": {"description": "描述文本", "enabled": True},
+            "title": {"description": "标题", "enabled": True},
+            "message": {"description": "消息文本", "enabled": True},
+            "content": {"description": "内容文本", "enabled": True}
+        }
+        
+        # 创建默认配置
+        with open(config_path, 'w', encoding='utf-8') as f:
+            import json
+            json.dump({"fields": default_fields}, f, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
     sys.exit(main())

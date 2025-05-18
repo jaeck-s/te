@@ -9,6 +9,7 @@ import json
 import os
 from core.factories.extractor_factory import ExtractorFactory
 from .key_name_dialog import KeyNameDialog  # 导入新创建的对话框
+from .property_name_dialog import PropertyNameDialog  # 导入属性名对话框
 
 class SettingsGroup(QGroupBox):
     """
@@ -283,6 +284,15 @@ class ExtractorGroup(QWidget):
         rpy_basic_group = QGroupBox("RPY文件基本属性提取")
         rpy_basic_layout = QVBoxLayout(rpy_basic_group)
         
+        # 创建自定义属性名按钮
+        property_import_btn = QPushButton("添加自定义属性名")
+        property_import_btn.setToolTip("添加自定义的属性名，支持不同的赋值方式")
+        property_import_btn.clicked.connect(self.show_property_name_dialog)
+        property_import_layout = QHBoxLayout()
+        property_import_layout.addWidget(property_import_btn)
+        property_import_layout.addStretch()
+        rpy_basic_layout.addLayout(property_import_layout)
+        
         # 创建RPY字典值组 - 添加新组
         rpy_dict_group = QGroupBox("RPY文件字典值提取")
         rpy_dict_layout = QVBoxLayout(rpy_dict_group)
@@ -303,6 +313,15 @@ class ExtractorGroup(QWidget):
         # 创建JSON字段组
         json_group = QGroupBox("JSON文件提取")
         json_layout = QVBoxLayout(json_group)
+        
+        # 创建JSON字段导入按钮
+        json_field_btn = QPushButton("添加自定义JSON字段")
+        json_field_btn.setToolTip("添加自定义的JSON字段名，用于提取特定字段的值")
+        json_field_btn.clicked.connect(self.show_json_field_dialog)
+        json_field_layout = QHBoxLayout()
+        json_field_layout.addWidget(json_field_btn)
+        json_field_layout.addStretch()
+        json_layout.addLayout(json_field_layout)
         
         # 初始化组引用
         basic_extractors = {}
@@ -330,6 +349,10 @@ class ExtractorGroup(QWidget):
                 "default_enabled": True
             })
             
+            # 跳过已经移动到自定义属性的提取器
+            if info.get("moved_to_custom", False):
+                continue
+                
             group = info["group"]
             default_enabled = info.get("default_enabled", True)
             desc = info.get("desc", f"提取 {name}")
@@ -393,6 +416,45 @@ class ExtractorGroup(QWidget):
             from PyQt5.QtWidgets import QMessageBox
             QMessageBox.information(self, "配置已更新", 
                                  "键名配置已更新，请重启应用程序以应用更改。")
+    
+    def show_property_name_dialog(self):
+        """显示属性名编辑对话框"""
+        # 创建配置文件路径
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "configs", "custom_properties.json"
+        )
+        
+        # 创建并显示对话框
+        dialog = PropertyNameDialog(self, config_path)
+        result = dialog.exec_()
+        
+        # 如果用户点击了保存，提示重启应用程序以应用更改
+        if result == PropertyNameDialog.Accepted:
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.information(self, "配置已更新", 
+                                 "自定义属性配置已更新，请重启应用程序以应用更改。")
+    
+    def show_json_field_dialog(self):
+        """显示JSON字段编辑对话框"""
+        # 导入对话框类
+        from .json_field_dialog import JsonFieldDialog
+        
+        # 创建配置文件路径
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "configs", "json_fields.json"
+        )
+        
+        # 创建并显示对话框
+        dialog = JsonFieldDialog(self, config_path)
+        result = dialog.exec_()
+        
+        # 如果用户点击了保存，提示重启应用程序以应用更改
+        if result == JsonFieldDialog.Accepted:
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.information(self, "配置已更新", 
+                                 "JSON字段配置已更新，请重启应用程序以应用更改。")
     
     def get_groups(self):
         """获取提取器组引用"""

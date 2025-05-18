@@ -3,24 +3,26 @@
 负责创建和管理文本提取器
 """
 from typing import Dict, Callable, List, Tuple, Optional
-from ..extractors_impl.rpy_properties import (
+from ..extractors_impl.custom_properties import (
+    extract_all_custom_properties,
+    # 导入所有向后兼容的函数
     extract_description,
     extract_purchase_notification,
     extract_unlock_notification,
     extract_title_text,
     extract_description_text,
-    extract_renpy_notify,
     extract_name,
-    extract_dict_keys,
     extract_sponsor_description,
-    extract_tooltip,  # 添加tooltip提取器
-    extract_text,        # 添加text提取器
-    extract_textbutton,   # 添加textbutton提取器
-    extract_available_tooltip,      # 添加新提取器
-    extract_unavailable_tooltip,    # 添加新提取器
-    extract_unavailable_notification  # 添加新提取器
+    extract_tooltip,
+    extract_text,
+    extract_textbutton,
+    extract_available_tooltip,
+    extract_unavailable_tooltip,
+    extract_unavailable_notification
 )
-from ..extractors_impl.json_fields import extract_display_name, extract_person_name, extract_json_description
+# 从rpy_properties导入extract_renpy_notify和extract_dict_keys函数
+from ..extractors_impl.rpy_properties import extract_dict_keys, extract_renpy_notify
+from ..extractors_impl.json_fields import extract_display_name, extract_person_name, extract_json_description, extract_all_json_fields
 from ..logger import get_logger
 
 class ExtractorFactory:
@@ -31,26 +33,33 @@ class ExtractorFactory:
     
     def __init__(self) -> None:
         self.logger = get_logger()
-        # 初始化提取器，添加新的提取器
+        # 初始化提取器
         self.extractors: Dict[str, Callable[[str, str], List[Tuple[int, str]]]] = {
+            # 使用从custom_properties导入的函数
             "description": extract_description,
             "purchase_notification": extract_purchase_notification,
             "unlock_notification": extract_unlock_notification,
             "title_text": extract_title_text,
             "description_text": extract_description_text,
             "renpy_notify": extract_renpy_notify,
-            "json_display_name": extract_display_name,
-            "json_person_name": extract_person_name,
-            "json_description": extract_json_description,
             "name": extract_name,
             "dict_keys": extract_dict_keys,
             "sponsor_description": extract_sponsor_description,
             "tooltip": extract_tooltip,
-            "text": extract_text,            # 注册text提取器
-            "textbutton": extract_textbutton,  # 注册textbutton提取器
-            "available_tooltip": extract_available_tooltip,      # 注册新提取器
-            "unavailable_tooltip": extract_unavailable_tooltip,  # 注册新提取器
-            "unavailable_notification": extract_unavailable_notification  # 注册新提取器
+            "text": extract_text,
+            "textbutton": extract_textbutton,
+            "available_tooltip": extract_available_tooltip,
+            "unavailable_tooltip": extract_unavailable_tooltip,
+            "unavailable_notification": extract_unavailable_notification,
+            
+            # JSON提取器
+            "json_display_name": extract_display_name,
+            "json_person_name": extract_person_name,
+            "json_description": extract_json_description,
+            "json_custom_fields": extract_all_json_fields,  # 新增统一的JSON字段提取器
+            
+            # 统一的自定义属性提取器
+            "custom_properties": extract_all_custom_properties
         }
         self.logger.debug(f"提取工厂初始化完成，加载了 {len(self.extractors)} 个提取器")
     

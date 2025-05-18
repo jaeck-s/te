@@ -1,0 +1,79 @@
+{
+  "properties": [
+    {
+      "name": "description",
+      "type": 1,
+      "enabled": true
+    },
+    {
+      "name": "purchase_notification",
+      "type": 1,
+      "enabled": true
+    },
+    {
+      "name": "unlock_notification",
+      "type": 1,
+      "enabled": true
+    },
+    {
+      "name": "title_text",
+      "type": 1,
+      "enabled": true
+    },
+    {
+      "name": "description_text",
+      "type": 1,
+      "enabled": true
+    },
+    {
+      "name": "name",
+      "type": 1,
+      "enabled": true
+    },
+    {
+      "name": "sponsor_description",
+      "type": 1,
+      "enabled": true
+    },
+    {
+      "name": "tooltip",
+      "type": 3,
+      "enabled": true
+    },
+    {
+      "name": "text",
+      "type": 3,
+      "enabled": true
+    },
+    {
+      "name": "textbutton",
+      "type": 3,
+      "enabled": true
+    },
+    {
+      "name": "available_tooltip",
+      "type": 2,
+      "enabled": true
+    },
+    {
+      "name": "unavailable_tooltip",
+      "type": 2,
+      "enabled": true
+    },
+    {
+      "name": "unavailable_notification",
+      "type": 2,
+      "enabled": true
+    },
+    {
+      "name": "description",
+      "type": 2,
+      "enabled": true
+    },
+    {
+      "name": "name",
+      "type": 2,
+      "enabled": true
+    }
+  ]
+}

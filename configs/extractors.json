@@ -3,77 +3,96 @@
     "group": "basic_props",
     "desc": "提取属性值 'description'",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "purchase_notification": {
     "group": "basic_props",
     "desc": "提取属性值 'purchase_notification'",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "unlock_notification": {
     "group": "basic_props",
     "desc": "提取属性值 'unlock_notification'",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "title_text": {
     "group": "basic_props",
     "desc": "提取属性值 'title_text'",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "description_text": {
     "group": "basic_props",
     "desc": "提取属性值 'description_text'",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "name": {
     "group": "basic_props",
     "desc": "提取属性值 'name'",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "sponsor_description": {
     "group": "basic_props",
     "desc": "提取属性值 'sponsor_description'",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "tooltip": {
     "group": "basic_props",
     "desc": "提取screen中的tooltip属性值",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "text": {
     "group": "basic_props",
     "desc": "提取screen中的text标签文本",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "textbutton": {
     "group": "basic_props",
     "desc": "提取screen中的textbutton标签文本",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "available_tooltip": {
     "group": "basic_props",
     "desc": "提取字典中的available_tooltip属性值",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "unavailable_tooltip": {
     "group": "basic_props",
     "desc": "提取字典中的unavailable_tooltip属性值",
     "format": "rpy",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "unavailable_notification": {
     "group": "basic_props",
     "desc": "提取字典中的unavailable_notification属性值",
+    "format": "rpy",
+    "default_enabled": false,
+    "moved_to_custom": true
+  },
+  "custom_properties": {
+    "group": "basic_props",
+    "desc": "提取所有自定义属性",
     "format": "rpy",
     "default_enabled": true
   },
@@ -93,7 +112,8 @@
     "group": "json",
     "desc": "从JSON文件中提取 'display_name' 字段",
     "format": "json",
-    "default_enabled": true
+    "default_enabled": false,
+    "moved_to_custom": true
   },
   "json_person_name": {
     "group": "json",
@@ -104,6 +124,13 @@
   "json_description": {
     "group": "json",
     "desc": "从JSON文件中提取 'description' 字段",
+    "format": "json",
+    "default_enabled": false,
+    "moved_to_custom": true
+  },
+  "json_custom_fields": {
+    "group": "json",
+    "desc": "从JSON文件中提取所有自定义字段",
     "format": "json",
     "default_enabled": true
   }

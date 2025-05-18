@@ -7,7 +7,7 @@
   "recursive": true,
   "skip_translated": true,
   "extractors": [
-    "dict_keys"
+    "custom_properties"
   ],
   "validators": [
     "global_deduplicate",

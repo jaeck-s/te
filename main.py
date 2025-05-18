@@ -8,7 +8,6 @@ from core.logger import get_logger
 from core.events import get_event_manager, EventNames, publish
 from gui.components.styles import StyleManager
 from core.config import TranslationConfig
-from utils.config_migration import migrate_custom_properties
 
 def main():
     # 确保工作目录正确

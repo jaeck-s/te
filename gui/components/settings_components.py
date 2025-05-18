@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 import json
 import os
 from core.factories.extractor_factory import ExtractorFactory
+from .key_name_dialog import KeyNameDialog  # 导入新创建的对话框
 
 class SettingsGroup(QGroupBox):
     """
@@ -286,6 +287,15 @@ class ExtractorGroup(QWidget):
         rpy_dict_group = QGroupBox("RPY文件字典值提取")
         rpy_dict_layout = QVBoxLayout(rpy_dict_group)
         
+        # 创建键名导入按钮
+        key_import_btn = QPushButton("添加自定义键名")
+        key_import_btn.setToolTip("添加自定义的字典键名，用于提取特定键下的字符串数组")
+        key_import_btn.clicked.connect(self.show_key_name_dialog)
+        key_import_layout = QHBoxLayout()
+        key_import_layout.addWidget(key_import_btn)
+        key_import_layout.addStretch()
+        rpy_dict_layout.addLayout(key_import_layout)
+        
         # 创建RPY函数调用组
         rpy_func_group = QGroupBox("RPY文件函数调用提取")
         rpy_func_layout = QVBoxLayout(rpy_func_group)
@@ -365,6 +375,24 @@ class ExtractorGroup(QWidget):
         self.main_layout.addWidget(rpy_dict_group)  # 添加字典提取组到UI
         self.main_layout.addWidget(rpy_func_group)
         self.main_layout.addWidget(json_group)
+    
+    def show_key_name_dialog(self):
+        """显示键名编辑对话框"""
+        # 创建配置文件路径
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "configs", "dict_keys.json"
+        )
+        
+        # 创建并显示对话框
+        dialog = KeyNameDialog(self, config_path)
+        result = dialog.exec_()
+        
+        # 如果用户点击了保存，提示重启应用程序以应用更改
+        if result == KeyNameDialog.Accepted:
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.information(self, "配置已更新", 
+                                 "键名配置已更新，请重启应用程序以应用更改。")
     
     def get_groups(self):
         """获取提取器组引用"""

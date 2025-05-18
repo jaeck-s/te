@@ -7,9 +7,7 @@
   "recursive": true,
   "skip_translated": true,
   "extractors": [
-    "available_tooltip",
-    "unavailable_notification",
-    "unavailable_tooltip"
+    "dict_keys"
   ],
   "validators": [
     "global_deduplicate",
